@@ -226,12 +226,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
 <div class="panel" id="panel-avail">
   <div class="card">
     <div class="card-title">本月可用時間</div>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:10px">🔴=不可服事 ｜ 🟡=尚未填問卷 ｜ 點擊切換。</p>
-    <div class="flex gap6 mb14 fw">
-      <button class="btn btn-p btn-sm" onclick="loadFromPublicForm()">📲 從公開表單載入</button>
-      <button class="btn btn-o btn-sm" onclick="copyFormLink()">🔗 複製表單連結</button>
-    </div>
-    <div id="form-link-notice" style="font-size:12px;color:var(--muted);margin-bottom:10px;display:none"></div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:14px">🔴=不可服事 ｜ 🟡=尚未填問卷 ｜ 點擊切換。</p>
     <div class="avail-wrap"><div id="avail-tbl"></div></div>
   </div>
 </div>
@@ -336,7 +331,8 @@ const FIREBASE_CONFIG = {
 };
 
 firebase.initializeApp(FIREBASE_CONFIG);
-var _auth=firebase.auth();var _db=firebase.database();
+var _auth = firebase.auth();
+var _db   = firebase.database();
 window._fbAuth=_auth;window._fbDb=_db;
 window._fbRef=function(p){return _db.ref(p);};
 window._fbSet=function(r,d){return r.set(d);};
@@ -448,50 +444,6 @@ async function loadSurveyLink(){
   if(el) el.textContent = link || '（尚未設定）';
 }
 
-// ── 取得當月所有服事日期 ──
-function getAllMonthDates(){
-  const weeks=getWeeks(year,month);
-  const dates=new Set();
-  weeks.forEach(w=>SERVICES.forEach(svc=>dates.add(fmtDate(getSvcDate(w,svc)))));
-  return [...dates];
-}
-
-// ── 從公開填寫表單載入可用時間 ──
-async function loadFromPublicForm(){
-  showSync(true);
-  try{
-    const path=`memberAvailability/${year}-${pad(month)}`;
-    const snap=await dbLoad(path);
-    if(!snap){
-      alert('尚未有同工透過公開表單填寫。');
-      showSync(false,true);return;
-    }
-    const allDates=getAllMonthDates();
-    let updated=0;
-    Object.entries(snap).forEach(([safeName,data])=>{
-      if(!data||!data.dates) return;
-      // 比對姓名（safe key 是把非中英文字元換成底線）
-      const mem=members.find(m=>{
-        const sk=m.name.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g,'_');
-        return sk===safeName||m.name===safeName;
-      });
-      if(!mem) return;
-      // 清除此同工當月的舊資料
-      allDates.forEach(ds=>delete unavailMap[`${mem.id}-${ds}`]);
-      // 套用新資料（填寫的是「不可服事」日期）
-      (data.dates||[]).forEach(ds=>{ if(allDates.includes(ds)) unavailMap[`${mem.id}-${ds}`]=true; });
-      surveyFilled.add(mem.id);
-      updated++;
-    });
-    await forceFlushMonth();
-    renderAll();renderAvail();
-    alert(`✅ 已從公開表單載入 ${updated} 位同工的可用時間！`);
-  }catch(e){
-    alert('載入失敗：'+e.message);
-  }
-  showSync(false);
-}
-
 async function initApp() {
   // Load members (global, not per-month)
   const savedMembers = await dbLoad(DB_PATHS.members);
@@ -540,9 +492,6 @@ function saveSurvey() {
 }
 function saveMembers() {
   dbSave(DB_PATHS.members, members, 1500);
-  // 同步公開姓名清單給填寫表單使用（只含服事中的同工）
-  const activeNames = members.filter(m=>m.active).map(m=>m.name);
-  dbSave('public/memberNames', activeNames, 2000);
 }
 
 
@@ -1596,18 +1545,6 @@ async function generateImage(mode){
 }
 
 
-// ── 複製公開表單連結 ──
-function copyFormLink(){
-  const base = window.location.origin + window.location.pathname.replace('index.html','');
-  const url = `${base}form.html?m=${year}-${pad(month)}`;
-  navigator.clipboard.writeText(url).then(()=>{
-    const el = document.getElementById('form-link-notice');
-    if(el){ el.textContent=`✓ 已複製！${url}`; el.style.display='block';
-      setTimeout(()=>{ el.style.display='none'; },5000); }
-  }).catch(()=>{ alert('表單連結：
-'+url); });
-}
-
 // ══════════════════════════════════════════
 // MONTH / TAB
 // ══════════════════════════════════════════
@@ -1637,16 +1574,10 @@ async function forceFlushMonth(){
 
 async function changeMonth(dir){
   showSync(true);
-  await forceFlushMonth();
+  await forceFlushMonth();   // ① 確保目前月份完整存入 Firebase
   month+=dir;if(month>12){month=1;year++;}if(month<1){month=12;year--;}
   currentWi=0;
-  // 清除匯入UI殘留（避免上個月的「已匯入XX位」顯示到新月份）
-  const ir=document.getElementById('import-result');
-  const ip=document.getElementById('import-preview');
-  if(ir) ir.innerHTML='';
-  if(ip) ip.style.display='none';
-  _parsedPreview=[];
-  await loadMonthData();
+  await loadMonthData();     // ② 載入新月份（先清空再從 Firebase 讀取）
   renderAll();
   showSync(false);
 }
