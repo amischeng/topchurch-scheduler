@@ -6,12 +6,9 @@
 <title>Top Church影視-服事表安排</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-
-<!-- Firebase Compat SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
-
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap');
 :root{
@@ -323,7 +320,6 @@ hr.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
 </div><!-- /app-screen -->
 
 <script>
-// ══ Firebase 設定 ══
 const FIREBASE_CONFIG = {
   apiKey:            "AIzaSyBESRqa_nKU0UaESlkxuxCPlnM0y61yZZ0",
   authDomain:        "topchurch-scheduler.firebaseapp.com",
@@ -334,70 +330,48 @@ const FIREBASE_CONFIG = {
   appId:             "1:130468282879:web:000879583cb9333300e7ca"
 };
 
-// ══ Firebase 初始化 ══
 firebase.initializeApp(FIREBASE_CONFIG);
 var _auth = firebase.auth();
 var _db   = firebase.database();
+window._fbAuth=_auth;window._fbDb=_db;
+window._fbRef=function(p){return _db.ref(p);};
+window._fbSet=function(r,d){return r.set(d);};
+window._fbGet=function(r){return r.get();};
+window._fbOnValue=function(r,cb){return r.on("value",cb);};
+window._fbUpdate=function(r,d){return r.update(d);};
+window._fbSignIn=function(e,p){return _auth.signInWithEmailAndPassword(e,p);};
+window._fbSignOut=function(){return _auth.signOut();};
 
-window._fbAuth    = _auth;
-window._fbDb      = _db;
-window._fbRef     = function(path){ return _db.ref(path); };
-window._fbSet     = function(ref,data){ return ref.set(data); };
-window._fbGet     = function(ref){ return ref.get(); };
-window._fbOnValue = function(ref,cb){ return ref.on("value",cb); };
-window._fbUpdate  = function(ref,data){ return ref.update(data); };
-window._fbSignIn  = function(e,p){ return _auth.signInWithEmailAndPassword(e,p); };
-window._fbSignOut = function(){ return _auth.signOut(); };
-
-// ══ 登入 / 登出 ══
 function handleLogin(){
-  var email = document.getElementById("login-email").value.trim();
-  var pass  = document.getElementById("login-pass").value;
-  var errEl = document.getElementById("login-error");
-  var btn   = document.getElementById("login-btn");
-  errEl.textContent = "";
-  btn.disabled = true;
-  btn.textContent = "登入中…";
-  _auth.signInWithEmailAndPassword(email, pass).catch(function(e){
-    var msgs = {
-      "auth/invalid-credential":"帳號或密碼錯誤",
-      "auth/user-not-found":"找不到此帳號",
-      "auth/wrong-password":"密碼錯誤",
-      "auth/too-many-requests":"嘗試次數過多，請稍後再試",
-      "auth/invalid-email":"Email 格式不正確",
-      "auth/network-request-failed":"網路錯誤，請檢查連線"
-    };
-    errEl.textContent = msgs[e.code] || ("登入失敗："+e.code);
-    btn.disabled = false;
-    btn.textContent = "登入";
+  var email=document.getElementById("login-email").value.trim();
+  var pass=document.getElementById("login-pass").value;
+  var errEl=document.getElementById("login-error");
+  var btn=document.getElementById("login-btn");
+  errEl.textContent="";btn.disabled=true;btn.textContent="登入中…";
+  _auth.signInWithEmailAndPassword(email,pass).catch(function(e){
+    var msgs={"auth/invalid-credential":"帳號或密碼錯誤","auth/user-not-found":"找不到此帳號",
+      "auth/wrong-password":"密碼錯誤","auth/too-many-requests":"嘗試次數過多，請稍後再試",
+      "auth/invalid-email":"Email格式不正確","auth/network-request-failed":"網路錯誤"};
+    errEl.textContent=msgs[e.code]||("登入失敗："+e.code);
+    btn.disabled=false;btn.textContent="登入";
   });
 }
-
-function handleLogout(){
-  if(confirm("確定登出？")) _auth.signOut();
-}
-
-// Enter 鍵登入
-document.getElementById("login-pass").addEventListener("keydown",function(e){ if(e.key==="Enter") handleLogin(); });
-document.getElementById("login-email").addEventListener("keydown",function(e){ if(e.key==="Enter") handleLogin(); });
-
-// 監聽登入狀態
+function handleLogout(){if(confirm("確定登出？"))_auth.signOut();}
+document.getElementById("login-pass").addEventListener("keydown",function(e){if(e.key==="Enter")handleLogin();});
+document.getElementById("login-email").addEventListener("keydown",function(e){if(e.key==="Enter")handleLogin();});
 _auth.onAuthStateChanged(function(user){
   if(user){
-    document.getElementById("login-screen").style.display = "none";
-    document.getElementById("app-screen").style.display  = "block";
-    var el = document.getElementById("user-email");
-    if(el) el.textContent = user.email;
-    window._currentUser = user;
-    if(window.initApp) window.initApp();
-  } else {
-    document.getElementById("login-screen").style.display = "flex";
-    document.getElementById("app-screen").style.display  = "none";
-    window._currentUser = null;
+    document.getElementById("login-screen").style.display="none";
+    document.getElementById("app-screen").style.display="block";
+    var el=document.getElementById("user-email");if(el)el.textContent=user.email;
+    window._currentUser=user;if(window.initApp)window.initApp();
+  }else{
+    document.getElementById("login-screen").style.display="flex";
+    document.getElementById("app-screen").style.display="none";
+    window._currentUser=null;
   }
 });
 
-// ══ 排班主程式 ══
 
 // ══════════════════════════════════════════
 // FIREBASE STORAGE — 取代 localStorage
@@ -485,6 +459,9 @@ async function initApp() {
 window.initApp = initApp;
 
 async function loadMonthData() {
+  // 先清空，避免上個月的資料殘留
+  assignments={};dashSet=new Set();unavailMap={};surveyFilled=new Set();confirmedWeeks=new Set();
+
   const [savedAssign, savedDashes, savedUnavail, savedSurvey] = await Promise.all([
     dbLoad(DB_PATHS.assignments(month)),
     dbLoad(DB_PATHS.dashes(month)),
@@ -1567,9 +1544,10 @@ async function generateImage(mode){
 // MONTH / TAB
 // ══════════════════════════════════════════
 function changeMonth(dir){
-  confirmedWeeks.clear();
   month+=dir;if(month>12){month=1;year++;}if(month<1){month=12;year--;}
-  currentWi=0;renderAll();
+  currentWi=0;
+  // 從 Firebase 載入新月份的資料（loadMonthData 會先清空舊資料）
+  loadMonthData().then(function(){ renderAll(); });
 }
 function switchTab(name){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
