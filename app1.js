@@ -11,7 +11,7 @@ const FIREBASE_CONFIG = {
 firebase.initializeApp(FIREBASE_CONFIG);
 var _auth=firebase.auth();var _db=firebase.database();
 window._fbAuth=_auth;window._fbDb=_db;
-window._fbRef=function(p){return _db.ref(p);};
+window._fbRef=function(a,b){return _db.ref(b!==undefined?b:a);};
 window._fbSet=function(r,d){return r.set(d);};
 window._fbGet=function(r){return r.get();};
 window._fbOnValue=function(r,cb){return r.on("value",cb);};
